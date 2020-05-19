@@ -1,0 +1,63 @@
+<분석프로그램실행 (WordCount)>
+
+1. master에서 MapReduce job을 실행하기 위해서는 HDFS디렉토리를 생성
+
+   # hdfs dfs -mkdir /user
+   # hdfs dfs -mkdir /user/root
+   # hdfs dfs -mkdir /user/conf
+
+2. master에서 Hadoop Shell command로 확인
+
+   # hdfs dfs -ls /
+   # hdfs dfs -ls /user
+
+3. Hadoop File System으로 파일을 업로드
+
+   1) 구버전명령 : # hadoop fs -put 원본파일 복사할 파일
+   2) 신버전명령
+      # hdfs dfs -put $HADOOP_HOME/etc/hadoop/hadoop-env.sh /user/conf/hadoop-env.sh
+      # hdfs dfs -ls
+      # hdfs dfs -ls /user/conf
+
+4. 테스트용파일을 HDFS에 업로드
+
+   # hdfs dfs -mkdir /input
+   # hdfs dfs -copyFromLocal /home/centos/hadoop-2.9.0/README.txt /input
+   # hdfs dfs -ls /input
+
+5. wordcount 프로그램 실행
+
+   (실행명령문법) hadoop jar [실행할 jar파일] [class] [입력파일] [출력폴더]
+
+   # hadoop jar  $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.9.0.jar wordcount /input/README.txt ~/wordcount-output
+
+   (진행상태메시지)
+   18/04/08 22:27:14 INFO mapreduce.Job:  map 0% reduce 0%. 
+	18/04/08 22:28:50 INFO mapreduce.Job:  map 100% reduce 0% --> 대용량파일일 경우 %가 조금씩증가
+	18/04/08 22:29:18 INFO mapreduce.Job:  map 100% reduce 100% --> map/reduce가 완료
+	18/04/08 22:29:19 INFO mapreduce.Job: Job job_1523191294770_0001 completed successfully
+
+6. 실행결과확인
+
+   1) 출력폴더확인 : # hdfs dfs -ls ~/wordcount-ouput or (/root/wordcount-ouput)
+   2) 실행결과확인 : # hdfs dfs -cat ~/wordcount-ouput/part-r-00000
+   3) 실행결과를 HDFS에서 Local(master)로 복사
+      # hdfs dfs -copyToLocal ~/wordcount-output/part-r-00000 /home/centos/result.txt
+
+      로컬에서 확인
+      # cat /home/centos/result.txt
+      # head -5 /home/centos/result.txt
+
+      (주의)
+      두번 실행하게 되면 디렉토리가 존재하면 에러가 발생하기 때문에 wordcount-ouput디렉토리삭제후 실행
+      # hdfs dfs -rm -r ~/wordcount-ouput
+        ... 옵션 -r : 하위디렉토리까지 삭제
+
+      (참고)
+      readme.txt파일은 아주 적은 용량임에도 시간이 많이 걸린다.(가상머신에서 실행하는 것도 이유겠지만)
+      하둡은 대용량파일을 분석하는데 특화되어 있기 때문에 작은 파일이라도 hdfs관련 프로그램이 기본적으로 로딩이 되어야 하기 때문에 시간이 더 걸릴 수 있다.
+
+   4) webbrowser에서 확인
+
+      http://master:50070
+      http://master:8088 

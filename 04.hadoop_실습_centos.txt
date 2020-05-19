@@ -1,0 +1,419 @@
+A. HDFS 입출력 실습
+
+1. eclipse 실행
+
+   1) workspace : d:/yourname/hadoop/workspace
+   2) java project 생성 
+      a. name    : hadoop
+      c. package : src/hdfs
+      d. folder  : libs
+      e. build path
+         a) centos에서 다운
+            ... /home/centos/hadoop-2.9.0/share/hadoop/common    : jar파일 3개            
+            ... /home/centos/hadoop-2.9.0/share/hadoop/mapreduce : jar파일 9개
+         b) eclipse에 libs에 다운로드
+            ... vmware의 centos에 카피후 이클립스에 복사
+         c) build path : 11개의 jar파일을 추가
+
+    3) hdfs.HdfsFile.java 작성
+
+package hdfs;
+
+import java.io.IOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
+public class HdfsFile {
+
+	public static void main(String[] args) {
+		
+		// java HdfsFile [filename] [contents]
+		
+		if(args.length != 2) { // 명령행에 매개변수가 2개가 아니면
+			
+			System.err.println("사용방법 : HdfsFile [filename] [contents]");
+			System.exit(0);
+		}
+		
+		
+		try {
+			
+			Configuration conf = new Configuration();
+			FileSystem hdfs = FileSystem.get(conf); 	// Hadoop 파일시스템을 제어하는 객체
+			Path path = new Path(args[0]); 				// 입력경로
+			
+			if(hdfs.exists(path)) {       				// 입력경로가 존재한다면
+				hdfs.delete(path, true); 				// HDFS파일을 삭제
+			}
+			
+			FSDataOutputStream os = hdfs.create(path); 	// HDFS에 파일을 생성
+ 			os.writeUTF(args[1]);                    	// HDFS파일에 내용을 저장
+ 			os.close();
+ 			
+ 			FSDataInputStream is = hdfs.open(path);		// HDFS파일을 Open
+ 			String inputString = is.readUTF();			// HDFS파일을 Read
+ 			is.close();
+			System.out.println("Read Data : " + inputString);
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+		
+	}
+}
+
+    4) Hadoop.jar파일로 export
+
+       a. hadoop프로젝트 선택 > 우클릭 export클릭 > java/jar file 클릭 > 저장(기본옵션, 저장위치설정)
+       b. centos/master node에서
+
+          a) 디렉토리생성 : /home/centos/source
+             # mkdir /home/centos/source
+          b) Hadoop.jar 파일을 /home/centos/source에 복사 (drag and drop)
+
+          c) 복사가 잘 않될 경우
+             (a) VMWare : (menu)VM>Setting>(tab)Options>Shared Folders -> Always Enabled
+             (b) 공유할 폴더를 추가 : (button)Add -> Host Path와 Name을 설정
+             (c) master : (terminal) 
+                 # vmware-hgfsclient : 폴더이름출력이 되면 성공
+                 # vmhgfs-fuse /home/centos/source
+
+             (d) 폴더 : computer>mnt>hgfs>공유폴더
+
+    5) centos/master에서 Hadoop.jar파일 실행
+
+       # hadoop jar /home/centos/source/Hadoop.jar hdfs.HdfsFile input.txt "Hello Hadoop!" 
+       # hdfs dfs -ls input.txt
+       # hdfs dfs -cat input.txt 
+
+=============================================================================================
+B. MapReduce 실습
+
+1. MapReduce실행과정
+
+   map    : (key, value) -> list(key, value)
+   reduce : (key, list(value)) -> list(key, value)
+
+   1) 입력데이터
+
+      read a book
+      write a book
+
+   2) map으로 변환 (key: line no, value: 문장)
+
+      1, read a book
+      2, write a book
+
+   3) 정렬과 병합(key:단어, value:단어갯수)
+
+      read, 1
+      a, 1
+      book, 1
+      write, 1
+      a, 1
+      book, 1
+
+   4) Reduce(key:단어, value: 단어갯수의 리스트)
+
+      read, (1,)
+      a, (1,1,)
+      book, (1,1,)
+      write, (1,)
+
+   5) 실행결과(key: 단어, value:리스트의 합계)
+
+      read, 1
+      a, 2
+      book, 2
+      write, 1
+
+
+2. MapReduce프로그래밍 요소
+
+   1) 데이터타입 : MapReduce프로그램에서 Key와 Value로 사용되는 모든 데이터타입은 반드시
+      WritableComparable인터페이스를 구현해야 한다.
+
+      a. WritableComparable인터페이스를 구현한 Wrapper클래스 목록
+
+         a) BooleanWritable : Boolean
+         b) ByteWritable : 단일 Byte
+         c) DoubleWritable : Double
+         d) FloatWritable : Float
+         e) IntWritable : Integer
+         f) LongWritable : Long
+         g) TextWritable : UTF-8형식의 문자열
+         h) NullWritable : 데이터값이 필요없을 경우에 사용
+
+      b. InputFormat 
+
+         a) TextInputFormat : 텍스트파일을 분석할 때 사용, 개행문자를 기준으로 레코드분류
+            ... key : Line Number(LongWritable 타입)
+            ... value : Line의 내용 (Text타입)
+         b) KeyValueInputFormat : 텍스트파일을 분석할 때 라인번호가 아닌 임의의 Key를 사용
+         c) NLineInputFormat : 텍스트파일의 라인수를 제한할 때 사용
+         d) DelegatingInputFormat : 여러개의 서로 다른 입력포맷을 사용할 경우 각 경로에 대한
+            작업을 위임
+         e) CombineFileInputFormat : 여러개의 파일을 입력 받을 경우에 사용
+         f) SequenceFileInputFormat : SequenceFile을 입력받을 경우에 사용
+            ... SequenceFile : Binary형태의 Key와 Value의 목록으로 구성된 텍스트파일 
+         g) SequenceFileAsBinaryInputFormat : SequenceFile의 Key와 value을 임의의 Binary객체로
+            변환하여 사용
+         h) SequenceFileAsTextInputFormat : SequenceFile의 Key와 value을 임의의 Text객체로 
+            변환하여 사용
+
+   2) Mapper : Key와 Value로 구성된 입력 데이터를 전달받아 데이터를 가공하고 분휴해서 새로운 데이터
+      목록을 생성
+
+   3) Partitioner : Map 텍스트의 출력 데이터가 어떤 Reduce 텍스트로 전달할지를 결정
+   4) Reducer : Map Task의 출력데이터를 입력 데이터로 전달받아 집계연산을 수행
+   5) Combiner : Mapper의 출력데이터를 입력데이터로 전달받아서 연산을 수행하여 Shuffle할 데이터의
+      크기를 줄일 경우에 사용
+   6) Shuffle : Map Taek와 Reduce Task사이의 데이터 전달과정
+   7) OutputFormat : 
+      
+      a. TextOutputFormat : Text파일에 레코드를 출력할 때 사용 (Key와 Value의 구분자는 Tab문자)
+      b. SequenceFileOutputFormat : SequenceFile을 출력물로 사용할 경우
+      c. SequenceFileAsBinaryOutputFormat : Binary Format의 Key와 Value를 사용
+      d. FilterOutputFormat : OutputFormat클래스를 편리하게 사용할 수 있는 method들을 제공
+      e. NullOutputFormat : 출력데이터가 없을 경우에 사용
+
+3. MapReduce 실습
+
+   <WordCount실습>
+
+   0) src.count패키지 생성
+
+   1) count.MyMapper.java
+
+package count;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+// Mapper<InputKey, InputValue, OutKey, OutValue>
+public class MyMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+	
+	// 출력값
+	private final static IntWritable one = new IntWritable(1); // 숫자 1(고정값) only
+	private Text word = new Text(); // 출력키
+	// 1, read a book
+	// read, 1
+	// a, 1
+	// book, 1
+	
+	@Override
+	protected void map(LongWritable key, Text value, Context context)
+			throws IOException, InterruptedException {
+
+		StringTokenizer st = new StringTokenizer(value.toString());
+		while(st.hasMoreTokens()) {
+			word.set(st.nextToken());  // 출력키
+			context.write(word, one);  // 출력데이터 : read, 1
+		}
+	}
+}
+
+   2) count.MyReducer.java
+
+package count;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+// Reducer<InputKey, InputValue, OutputKey, OutputValue>
+public class MyReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+	
+	private IntWritable result = new IntWritable();
+	
+	// 합치는 과정(reduce) : key, list -> key, value를 합치는 과정
+	@Override
+	protected void reduce(Text key, Iterable<IntWritable> values, Context context) 
+			throws IOException, InterruptedException {
+
+		int sum = 0;
+		for(IntWritable value:values) {
+			sum += value.get(); 	// 리스트를 합산하는 과정
+		}
+		result.set(sum); 			// 출력값을 설정
+		context.write(key, result); // read 1, a 2, book 2
+	}
+}
+
+   3) count.WordCount.java
+
+package count;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+
+public class WordCount {
+
+	public static void main(String[] args) throws Exception {
+		
+		Configuration conf = new Configuration();
+		if(args.length != 2) {
+			System.err.println("사용법 : WordCount [input] [output]");
+			System.exit(0);
+		}
+		
+		// job의 속성을 정의
+		Job job = Job.getInstance(conf, "WordCount"); 	// 실행할 Job이름
+		job.setJarByClass(WordCount.class); 			// job class 이름
+		job.setMapperClass(MyMapper.class); 			// mapper class 이름
+		job.setReducerClass(MyReducer.class); 			// reducer class 이름
+		
+		// 1. 입출력데이터형식지정	
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(TextOutputFormat.class);
+		
+		// 2. 출력키, 값 데이터형식지정
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
+		
+		// 3. 입력파일, 출력디렉토리를 지정
+		FileInputFormat.addInputPath(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		
+		// 4. Hadoop 분석작업실행
+		job.waitForCompletion(true);			
+	}
+}
+
+   4) Hadoop.jar파일로 export
+
+     ... A. HDFS 입출력 실습의 4) 작업을 수행
+
+   5) Text파일생성
+
+      a) 파일생성 : /home/centos/input.txt 
+
+      # pwd : 현재디렉토리확인
+      # cd /home/centos : 디렉토리 변경
+      # gedit /home/centos/input.txt
+        1 line : read a book
+        2 line : write a book
+
+   6) 로컬시스템(master)의 텍스트파일을 HDFS으로 복사(업로드)
+
+      # hdfs dfs -rm input.txt : 파일이 있을 경우에만 실행
+      # hdfs dfs -put /home/centos/input.txt input.txt
+      # hdfs dfs -ls
+      # hdfs dfs -cat input.txt
+
+   7) WordCount를 실행
+
+      # hadoop jar /home/centos/source/Hadoop.jar count.WordCount input.txt wordcount_count
+
+	(진행메시지- 성공)
+	18/04/10 13:40:08 INFO mapreduce.Job:  map 0% reduce 0%
+	18/04/10 13:40:15 INFO mapreduce.Job:  map 100% reduce 0%
+	18/04/10 13:40:21 INFO mapreduce.Job:  map 100% reduce 100%
+	18/04/10 13:40:22 INFO mapreduce.Job: Job job_1523333188438_0001 completed successfully	      
+
+	# hdfs dfs -ls wordcount_count
+	# hdfs dfs -cat wordcount_count/part-r-00000
+
+   <Sort 실습>
+
+   1) sort.StringSort.java
+
+package sort;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+
+public class StringSort {
+
+  public static void main(String[] args) throws Exception {
+    
+    Configuration conf = new Configuration();
+    
+    // 1. Job속성정의
+    Job job = Job.getInstance(conf, "StringSort");
+    job.setJarByClass(StringSort.class);
+    
+    // 2. Mapper와 Reducer를 정의
+    //    1) Hadoop에서 제공하는 기본 mapper를 사용
+    //       -> 일력데이터가 그대로 출력데이터가 된다.
+    job.setMapperClass(Mapper.class);
+    //    2) Hadoop에서 제공하는 기본 reducer를 사용
+    //       -> map의 출력데이터가 그대로 reducer의 출력이 된다.
+    //       -> reduce 단계에서 내부적으로 sort처리가 된다.
+    job.setReducerClass(Reducer.class);
+    
+    // 3. map출력과 reduce의 출력의 key와 Value의 데이터타입 정의
+    //    1) map의 출력
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(Text.class);
+    //    2) reduce의 출력
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
+    //    3) reduce의 출력수를 1로 설정(data갯수가 줄어들지 않음)
+    job.setNumReduceTasks(1);
+    
+    // 4. 입출력데이터형식지정
+    job.setInputFormatClass(KeyValueTextInputFormat.class);
+    job.setOutputFormatClass(SequenceFileOutputFormat.class);
+    
+    // 5. 입력데이터파일
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    
+    // 6. 출력디렉토리지정 - 시퀀스파일형식으로
+    SequenceFileOutputFormat.setOutputPath(job, new Path(args[1]));
+    
+    // 7. 블럭단위압축(통상적으로 60%사이즈 감소)
+    SequenceFileOutputFormat.setOutputCompressionType(job, 
+        SequenceFile.CompressionType.BLOCK);
+    
+    // 8. MapReduce
+    job.waitForCompletion(true);
+  }
+}
+
+   2) Hadoop.jar파일로 export & masterNode에 복사
+
+     ... A. HDFS 입출력 실습의 4) 작업을 수행
+
+   3) 데이터분석(Sort) : StringSort를 실행
+
+      a. Random String 생성
+         ... http://textmechanic.com/text-tools/randomization-tools/random-string-generator/
+
+      # hdfs dfs -mkdir /input
+      # hdfs dfs -put /home/centos/data/RandomString.txt /input/RandomString.txt
+      # hdfs dfs -ls /input
+      # hdfs dfs -cat /input/RandomString.txt
+
+      (실행)
+      # hadoop jar /home/centos/source/Hadoop.jar sort.StringSort /input/RandomString.txt random-string-output
+
+      (주의) cat명령이 아니라 text명령으로 읽어야 함
+      # hdfs dfs -text /random-string-output/part-r-00000 | tail -10

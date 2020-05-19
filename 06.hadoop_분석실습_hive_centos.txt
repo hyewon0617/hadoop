@@ -1,0 +1,398 @@
+A. 데이터분석실습(HIVE) - 항공운항데이터
+
+1. Hadoop기반기술
+
+   1) MapReduce : 자바로 개발
+   2) Hadoop Streaming : Perl, Python등의 언어로 개발
+   3) Hive : HiveQL로 개발 (facebook)
+   4) Pig  : Pig script로 개발 (Twitter)
+
+2. Hive
+
+   Apache Hive는 Hadoop에서 동작하는 Data Warehouse의 구조로서 데이터의 요약, 질의 및 분석
+   기능을 제공한다. 초기에는 Facebook에서 개발되었지만 Netflex등과 같은 회사에서 개발, 사용
+   되고 있다.
+   Hive는 HDFS나 HBase와 같은 데이터저장시스템에 저장되어 있는 대용량데이터들을 분석하는데 
+   사용되며 HiveQL이라 불리는 SQL같은 언어를 제공하고 MapReduce의 모든 기능을 제공한다.
+   기본적으로 Hive는 메타데이터를 RDBMS안에 저장할수 있다. 
+
+   1) Hadoop기반에서 실행되는 라이브러리
+   2) Java코드대신에 SQL문을 사용(HiveQL)
+
+   Hive2에서 MapReduce방식의 실행은 아직 가능하지만 향후 버전에서는 더이상 지원되지 않을 수
+   있기 때문에 다른 분산 라이브러리(Spark, Tez등)를 사용하는 것을 권고한다.
+
+3. Hive설치
+
+   1) Download : http://hive.apache.org
+
+      a. hive-2.3.6-bin.tar.gz 다운 및 풀기
+      b. 폴더명 변경 : hive-2.3.6
+      c. hive-2.3.6을 /home/centos/hive-2.3.6으로 이동
+
+   2) mysql을 설치(Windows)
+
+      Hive에서 mysql 데이터베이스에 meta정보데이터를 저장하고 연동하기 위해
+      Windows에 mysql설치 완료후 방화벽에서 3306port를 개방
+
+      a. 제어판 > window방화벽 > 고급설정 > 인바운드규칙 > 새규칙 > 포트 > 다음
+      b. 특정포트 3306 > 연결허용 > 다음 > 도메인/개인/공용 전부선택 > 다음
+         > 이름:mysql서비스 > 마침
+
+   3) HIVE_HOME을 환경변수에 추가
+
+      # gedit /etc/profile
+
+        ... export HIVE_HOME=/home/centos/hive-2.3.6
+        ... PATH=기존path맨 끝에 추가 ":$HIVE_HOME/bin" 
+
+      # source /etc/profile   
+      # reboot    
+
+   4) hive-env.sh 수정 
+
+      a. hive-env.sh.template를 복사후 수정
+      
+      # cp $HIVE_HOME/conf/hive-env.sh.template $HIVE_HOME/conf/hive-env.sh
+      # gedit $HIVE_HOME/conf/hive-env.sh
+        ... 48라인 : HADOOP_HOME=/home/centos/hadoop-2.9.0
+
+   5) mysql-connector-java-5.1.47-bin.jar을 다운로드
+
+      a. download :
+         ... http://mavenrepository.com
+             -> search : mysql-conn
+             -> mysql connector/j 클릭
+             -> 버전 ㅣ 5.1.47 클릭
+             -> jar를 클릭
+             -> download
+
+      b. mysql-connector-java-5.1.47-bin.jardmf /home/centod/hive-2.3.6/lib 이동
+
+   6) Hive 실행환경 설정
+
+     a. hive-2.3.6/conf/hive-site.xml 을생성
+
+        a) 파일을 신규로 생성
+
+           # gedit $HIVE_HOME/conf/hive-site.xml
+
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+	<property>
+		<name>hive.metastore.local</name>
+		<value>true</value>
+	</property>
+	<property>
+		<name>javax.jdo.option.ConnectionURL</name>
+		<value>jdbc:mysql://192.168.0.14:3306/hive?useSSL=false&amp;createDatabaseIfNotExist=true</value>
+	</property>
+	<property>
+		<name>javax.jdo.option.ConnectionDriverName</name>
+		<value>com.mysql.jdbc.Driver</value>
+	</property>
+	<property>
+		<name>javax.jdo.option.ConnectionUserName</name>
+		<value>hive</value>
+	</property>
+	<property>
+		<name>javax.jdo.option.ConnectionPassword</name>
+		<value>12345</value>
+	</property>
+</configuration>
+
+4. Hive실습
+
+   1) mysql 환경설정
+
+      a. dtabase생성 : create database hive;
+
+      b. user 생성   : hive/12345
+         a) local    : create user 'hive'@'localhost' identified by '12345';
+         b) external : create user 'hive'@'192.168.%' identified by '12345';
+
+	  c. 권한부여
+
+	  	 a) 모든DB접속 : grant all privileges on *.* to 'hive'@'localhost';
+	  	 b) 특정DB접속 : grant all privileges on hive.* to 'hive'@'localhost';
+ 					    grant all privileges on hive.* to 'hive'@'192.168.%';
+
+   2) metastore초기화작업
+
+      [hive 초기화명령]
+      # schematool -initSchema -dbType mysql
+        ... 에러가 발생할 경우 mysql hive db삭제후 재설정
+            a. drop database hive;
+            b. create database hive;
+        ... 초기화 성공확인후 navicat에서
+            use hive;
+            show tables;
+
+   3) hdfs작업환경설정
+
+      a. 작업디렉토리 생성
+
+      	 # hdfs dfs -mkdir /tmp
+      	 # hdfs dfs -mkdir /user/hive
+      	 # hdfs dfs -mkdir /user/hive/warehouse
+
+      b. 권한설정
+
+         # hdfs dfs -chmod g+x /tmp
+         # hdfs dfs -chmod g+x /user/hive
+         # hdfs dfs -chmod g+x /user/hive/warehouse
+
+   4) hive실행
+
+      # hive
+
+        ... hive> 프롬프트가 나오면 성공
+
+
+
+   5) HiveQL실습
+
+      (주의) SQL문에 공란이 있으면 에러가 있기 떄문에 공란없이 작성할 것
+
+      a. Table생성
+
+         a) Table만들기 
+
+            ... hive>sql명령을 입력
+            ... sql문에 공백이 있거나 하면 실행오류에 주의할 것
+            ... 시간이 좀 소요가 된다. 그 이유는 4대의 논리적인 클러스터에 업로드하기 때문ㅇ
+            ... 일반적인 SQL문과 유사하게 실행 가능하다.
+            ... show tables; 또는 drop table 테이블명...
+
+create table dept (
+deptno int,
+dname string,
+loc string
+)
+row format delimited
+fields terminated by ',';
+
+create table emp (
+empno int,
+ename string,
+job string,
+mgr int,
+hiredate string,
+sal int,
+comm int,
+deptno int
+)
+row format delimited
+fields terminated by ',';
+
+create table salgrade (
+grade int,
+losal int,
+hisal int
+)
+row format delimited
+fields terminated by ',';
+
+      b. data upload : scott의 dept, emp, salgrade를 csv파일로 업로드
+
+load data local inpath '/home/centos/data/emp/dept.csv' overwrite into table dept; 		
+load data local inpath '/home/centos/data/emp/emp.csv' overwrite into table emp; 		
+load data local inpath '/home/centos/data/emp/salgrade.csv' overwrite into table salgrade; 
+
+      c. HiveQL실행시에 타이틀을 출력하기 위한 명령
+
+         hive>set hive.cli.print.header = true;
+
+      d. hive실습
+
+select d.deptno, d.dname, e.ename, e.sal
+from emp e, dept d
+where e.deptno = d.deptno;
+
+select e.ename, d.deptno, d.dname
+from emp e, dept d
+where e.deptno = d.deptno
+and e.job like '%CLERK%';
+
+select deptno, count(*) cnt, sum(sal) sal, avg(sal) avg
+from emp
+group by deptno
+order by deptno;
+
+   6) 항공운항데이터 분석실습
+
+      a. create table 
+
+create table ontime(
+Year int,
+Month int,
+DayofMonth int,
+DayOfWeek int,
+DepTime int,
+CRSDepTime int,
+ArrTime int,
+CRSArrTime int,
+UniqueCarrier string,
+FlightNum int,
+TailNum string,
+ActualElapsedTime int,
+CRSElapsedTime int,
+AirTime int,
+ArrDelay int,
+DepDelay int,
+Origin string,
+Dest string,
+Distance int,
+TaxiIn int,
+TaxiOut int,
+Cancelled int,
+CancellationCode string,
+Diverted int,
+CarrierDelay string,
+WeatherDelay string,
+NASDelay  string,
+SecurityDelay  string,
+LateAircraftDelay string
+)
+partitioned by(delayyear int)
+row format delimited fields terminated by ','
+lines terminated by '\n'
+stored as textfile;
+
+      b. 파일 업로드
+
+         a) csv파일의 첫라인(Header) 삭제 : master에서 실행
+
+            ... hive 에서는 select는 실행가능하지만 update/delete는 실행이 않됨
+                그 이유는 hive에서는 실질적으로는 text file이기 때문에 update/delete
+                구현이 어렵다.
+
+            # cd /home/centos/data/airlie
+            # sed -e '1d' 2006.csv > 2006_new.csv
+            # sed -e '1d' 2007.csv > 2007_new.csv
+            # sed -e '1d' 2008.csv > 2008_new.csv
+
+         b) csv파일을 hive의 ontime 테이블로 업로드(hive에서 실행)
+
+load data local inpath '/home/centos/data/airline/2006.csv' overwrite into table ontime partition (delayyear = '2006'); 
+
+load data local inpath '/home/centos/data/airline/2007.csv' overwrite into table ontime partition (delayyear = '2007'); 
+
+load data local inpath '/home/centos/data/airline/2008.csv' overwrite into table ontime partition (delayyear = '2008');          
+
+select * from ontime limit 10;
+
+select count(*) from ontime;
+
+(terminal 에서 ) # hdfs dfs -ls /user/hive/warehouse/ontime -> partition delayyear=2008 확인
+
+         c) 2006~2008년도의 도착지연건수를 조회
+
+            ... java로 작성한 코드와 결과가 동일하게 출력되지만 java(hadoop)는 정렬이 않됨
+            ... /user/hive/warehouse/에 ontime디렉토리가 생성이 되고 그 안에 파일이 생성
+
+select year, month, count(*)
+from ontime
+where depdelay > 0
+group by year, month
+order by year, month;
+
+            ... 파일목록확인
+                # hdfs dfs - ls /user/hive/warehouse/ontime
+
+            ... 재실행할 경우에
+                # hdfs dfs -rm -r /user/hive/warehouse/ontime
+
+select year,month, count(*)
+from ontime
+where delayyear = 2008 and depdelay > 0
+group by year, month
+order by year, month;
+
+         f) 테이블 join
+
+            ... 데이터다운로드 : http://stat-computing.org/dataexpo/2009/
+            ... Supplemental data sources 클릭 
+            ... 항공사테이블 : carriers.csv
+            ... 공항테이블   : airports.csv
+            ... 제목행삭제   : gedit로 삭제
+            ... 문자열에 따옴표를 제거
+
+                # find . -name airports.csv -exec perl -p -i -e 's/"//g' {} \
+                # find . -name carriers.csv -exec perl -p -i -e 's/"//g' {} \
+
+            ... 테이블생성
+
+create table carrier_code(
+code string,
+description string
+)
+row format delimited fields terminated by ','
+lines terminated by '\n'
+stored as textfile;
+
+create table airport_code(
+iata string,
+airport string,
+city string,
+state string,
+country string,
+lat double,
+longitude double)
+row format delimited fields terminated by ','
+lines terminated by '\n'
+stored as textfile;    
+
+            ... 데이터로드
+
+load data local inpath '/home/centos/data/airline/carriers.csv' overwrite into table carrier_code; 
+load data local inpath '/home/centos/data/airline/airports.csv' overwrite into table airport_code; 
+
+...2개 테이블 join
+(ansi join)
+select a.year, a.uniquecarrier, c.description, count(*)
+from ontime a join carrier_code c
+on a.uniquecarrier = c.code
+where a.arrdelay > 0
+group by a.year, a.uniquecarrier, c.description
+order by a.year, a.uniquecarrier, c.description;
+
+(non ansi join)
+select a.year, a.uniquecarrier, c.description, count(*)
+from ontime a,carrier_code c
+where a.uniquecarrier = c.code and a.arrdelay > 0
+group by a.year, a.uniquecarrier, c.description
+order by a.year, a.uniquecarrier, c.description;
+
+
+...3개 이상 테이블 join
+select a.year, a.origin, b.airport, a.dest, c.airport, count(*)
+from ontime a join airport_code b on a.origin = b.iata
+join airport_code c on a.dest = c.iata
+where a.arrdelay > 0
+group by a.year, a.origin, b.airport, a.dest, c.airport
+order by a.year, a.origin, b.airport, a.dest, c.airport;
+
+... 외부조인
+    -> 1492행중에서 1390라인꺄지만 선택
+
+# cd /home/centos/data/airline
+# sed -e '1390d' carriers.csv > carriers_new.csv : 명령이 잘 안되어 직접 1391라인 이후는 삭제
+
+(테이블생성 : hive에서 실행)
+create table carrier_code2 ( code string, description string )
+row format delimited fields terminated by ','
+lines terminated by '\n'
+stored as textfile;
+
+(data load)
+load data local inpath '/home/centos/data/airline/carriers_new.csv' overwrite into table carrier_code2; 
+
+(외부조인)
+select a.year, a.uniquecarrier, b.code, b.description
+from ontime a left outer join carrier_code2 b
+on a.uniquecarrier = b.code
+where a.uniquecarrier = 'WN'
+limit 10;

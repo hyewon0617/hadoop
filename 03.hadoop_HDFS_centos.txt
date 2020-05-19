@@ -1,0 +1,173 @@
+<Hadoop Distributed File System(HDFS)>
+
+1. HDFS
+
+   1) 대용량의 파일을 분산된 서버에 저장하고 저장된 데이터를 빠르게 처리할 수 있게 하는 파일시스템
+   2) 저사양의 서버를 이용해서 구성할 수 있다.(리눅스시스템 여러대를 사용할 수 있다.)
+   3) 블럭구조의 파일 시스템 : hadoop 2.x이전에는 한 블럭당 64MB였지만 2.x부터는 128MB로증가
+      --> 적은 용량의 파일보다 대용량의 파일을 사용하는 것이 효과적이다.
+
+2. HDFS를 시작/중지하는 명령어
+
+   1) 시작명령
+
+   	  a. HDFS를 구동명령   : # start-dfs.sh
+   	  b. MapReduce구동명령 : # start-yarn.sh
+
+   2) 중지명령
+
+   	  a. HDFS를 중지명령   : # stop-dfs.sh
+   	  b. MapReduce중지명령 : # stop-yarn.sh   
+
+   3) deprecated명령
+
+      a. # start-all.sh
+      b. # stop-all.sh
+
+3. HDFS의 주요 명령어
+
+   (형식) hdfs dfs -명령어 옵션
+         ... dfs (Distributed Filesystem Shell) : 분산파일시스템쉘
+   
+   1) 도움말
+    
+      # hdfs dfs -help
+      # hdfs dfs -help ls : ls명령의 세부적인 도움말
+
+   2) 파일목록보기(ls : LiSt)
+
+      # hdfs dfs -ls [디렉토리명]
+      # hdfs dfs -ls -R : 하위목록까지 출력
+
+      (참고) 
+      HDFS은 논리적으로 하나의 서버이기 때문에 Hadoop명령들을 NameNode이외에
+      DataNode에서도 동일하게 사용할 수 있다. 단, DataNode사용하는 경우에는 
+      NameNode에서 사용하는 것보다 시간이 더 걸린다.
+
+   3) 파일용량보기(du : Directory Usage)
+
+      디렉토리 또는 파일의 사용량을 바이트단위로 출력
+
+      # hdfs dfs -du /
+      # hdfs dfs -du -s /
+        ... 옵션 s : 해당 디렉토리의 전체용량만 출력
+
+   4) 파일내용보기(cat, text)
+
+      a. cat  : 텍스트파일 전용
+      b. text : 텍스트파일 및 압축파일도 읽을 수 있다.
+      c. 사용법: hdfs dfs -cat [디렉토리/파일명]
+
+      # hdfs dfs -cat /user/conf/hadoop-env.sh
+      # hdfs dfs -text /user/conf/hadoop-env.sh
+
+   5) 디렉토리생성(mkdir : Make DIRectory)
+
+      a. 사용법 : hdfs dfs -mkdir [디렉토리]
+
+      # hdfs dfs -mkdir /input
+      # hdfs dfs -ls 
+
+   6) 파일관련명령들
+
+      a. put 
+
+         ... hdfs dfs -put [로컬시스템파일] [하둡분산시스템파일]
+         ... $HADOOP_HOME/etc/hadoop 디렉토리의 core-site.xml파일을 HDFS의 input디렉토리에 복사
+             
+         # hdfs dfs -put $HADOOP_HOME/etc/hadoop/core-site.xml /input
+         # hdfs dfs -ls /input
+
+      b. copyFromLocal
+
+         ... hdfs dfs -copyFromLocal [로컬시스템파일] [하둡분산시스템파일]   
+         ... 로컬(master)의 core-site.xml을 HDFS의 input디렉토리의 test라는 파일로 복사
+
+         # hdfs dfs -copyFromLocal $HADOOP_HOME/etc/hadoop/core-site.xml /input/test
+         # hdfs dfs -ls /input
+
+      c. copyToLocal
+
+         ... hdfs dfs -copyToLocal [하둡분산시스템파일] [로컬시스템파일]  
+         ... HDFS의 input디렉토리의 test라는 파일을 로컬시스템의 현재 디렉토리의 sample파일로 복사
+
+         # hdfs dfs -copyToLocal /input/test sample
+         # ls -la
+         # cat sample
+
+      d. get
+
+         ... hdfs dfs -get [HDFS파일] [로컬파일]
+         ... HDFS의 /input/test파일을 로컬시스템의 현재디렉토리에 test라는 파일로 복사
+
+         # hdfs dfs -get /input/test test
+         # ls -la 
+
+      e. getmerge
+
+         ... hdfs dfs -getmerge [HDFS파일] [로컬파일]  
+         ... 로컬시스템으로 파일 한개로 합쳐서 복사명령
+
+         # hdfs dfs -getmerge /input test_merge
+         # cat test_merge
+
+      f. cp
+
+         ... hdfs dfs -cp [HDFS소스파일] [HDFS복사파일]
+         ... HDFS의 /user/conf디렉토리의 파일을 HDFS의 현재 사용자(root)디렉토리로 복사
+
+         # hdfs dfs -cp /user/conf/hadoop-env.sh hadoop-env.sh
+         # hdfs dfs -ls
+         # hdfs dfs -ls /user/root
+
+      g. mv
+
+         ... hdfs dfs -mv [이동전경로] [이동후경로] : HDFS안에서만 이동명령
+         
+         # hdfs dfs -mv /input/test /input/test1  : 결과적으로 파일변경
+         # hdfs dfs -ls /input
+
+      h. rm
+
+         (파일삭제)
+         ... hdfs dfs -rm [디렉토리[/파일]]
+         # hdfs dfs -rm /temp/a
+
+         (하위디렉토리까지 삭제)
+         ... hdfs dfs -rm -r [디렉토리[/파일]]
+         # hdfs dfs -rm -r /input
+         # hdfs dfs -ls 
+
+      i. count
+
+         ... hdfs dfs -count [디렉토리[/파일]]
+         # hdfs dfs -count /tmp/a
+         # hdfs dfs -count /tmp
+
+      j. tail/head
+
+         ... hdfs dfs [-tail/-head] [파일]
+         # hdfs dfs -tail hadoop-env.sh
+
+      k. chmod
+         
+         ... hdfs dfs -chmod [권한옵션] [디렉토리/파일] 
+         # hdfs dfs -chmod 777 conf
+
+         a. 소유자/그룹/전체권한
+            777=모든권한, 666=읽기/쓰기, 555=읽기/실행, 444=읽기
+         b. linus시스템의 파일권한 10자리
+            ... 1   :디렉토리/파일구분
+            ... 2~4 : 소유자권한
+            ... 5~7 : 그룹권한
+            ... 8~10:전체권한
+
+      j. touchz
+
+         ... 0바이트의 파일을 생성
+         ... hdfs dfs -touchz 파일
+         # hdfs dfs -touchz test.txt
+
+     i. hadoop이 비정상종료등의 원인으로 safemode일 때 종료 방법
+
+        # hdfs dfsadmin -safemode forceExit

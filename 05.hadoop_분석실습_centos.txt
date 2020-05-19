@@ -1,0 +1,499 @@
+데이터분석실습 - 항공운항데이터
+
+1. 분석용 데이터 다운로드
+
+   1)  다운로드
+	   ... http://stat-coumputing.org/dataexpo/2009
+	   ... https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/HG7NV7
+
+	   1987~2008년 21년간 미국 항공운항데이터를 활용하여 항공기의 출발/도착지연, 결항등의 통계분석
+	   자료이다. 전체자료 11GB이며 2006~2008년까지의 자료만 다운로하여 실습
+
+   2) 다운로드파일을 압축풀기
+   	  ... d:/yourname/data/airline
+
+   3) master에 share폴더 생성
+
+      a. VMWare : (menu)VM>Setting>(tab)Options>Shared Folders를 d:/yourname/data를 등록
+      b. # mkdir /home/centos/share
+      c. # vmware-hgfsclient
+      d. # vmhgfs-fuse /home/centos/share
+
+   4) matser(namenode)에 복사하기
+      a. /home/centos/data/airline 
+      b. 2006.csv.bz2 ~ 2008.csv.bz2 을 복사
+      c. 압출풀기
+      d. 특정한 문자열이 포함된 행 삭제하기 : header line 삭제
+
+         a) 2006.csv 파일에서 "Year"가 포함된 행을 제거하고 화면에 출력
+            # sed '/Year/d' 2006.csv
+
+		  위의 명령을 실행하면 2006.csv파일에서 문자열 "Year"가 있는 행을 제거한 후 
+		  화면에 결과를 출력한다. 
+		  파일 자체를 수정하여 저장하고 싶다면 -i 옵션을 추가하자. 
+
+		 b) 2006.csv 파일에서 "Year"가 포함된 행을 삭제하고 저장
+		    sed -i '/Year/d' 2006.csv
+		    sed -i '/Year/d' 2007.csv
+		    sed -i '/Year/d' 2008.csv
+
+2. mysql down & 설치
+
+   1) https://dev.mysql.com/downloads/mysql/5.7.html
+   2) mysql community server edition (v5.7) 다운로드
+      a. 개발용무료버전
+      b. GPL(General Public License, 일반공중사용허가서)
+      c. Windows(x86, 64-bit), ZIP버전선책 download
+   3) c:/mysql을 압출풀기
+   4) 환경설정
+      a. win+r : sysdm.cpl
+      b. MYSQL_HOME : c:/mysql
+      c. path : c:/mysql/bin or %MYSQL_HOME%/bin
+
+    5) mysql설치
+
+       a. cmd창을 관리자권한으로 실행
+       b. c:\>mysqld --install -> 실행완료메시지 Service successfully installed
+
+       (주의)
+       "msvcp120.dll이 없어 프로그램을 시작할 수가 없습니다"라는 에러가 발생할 경우
+       ... Visual Studio 2013용 Visual C++ 재배포 가능 패키지 프로그램을 설치해야 한다.
+       ... 다운로드주소
+           -> https://www.microsoft.com/ko-kr/download/details.aspx?id=40784
+		      32bit : vcredist_x89.exe / 54bit : vcredist_x64.exe
+
+    6) mysql 초기화작업 (cmd에서 관리자권한으로 실행, 시간이 많이 소요)
+
+       a. c:\>mysqld --initialize
+
+    7) c:\mysql\data\사용자계정.err에서 임시번호를 확인
+
+       ... A temporary password is generated for root@localhost: nmqBaO%xS5jO
+
+    8) mysql 서비스등록(cmd창에서) 
+
+       ... c:\>net start mysql
+       a. 서비스프로그램에서 mysql서비스실행확인
+       b. 서비스등록 : net start 서비스이름
+       c. 서비스해제 : net stop 서비스이름
+
+    9) mysql에 접속(cmd창에서)
+
+       a. mysql -uroot -p
+       b. password : nmqBaO%xS5jO
+
+   10) 비밀번호변경
+
+       a. 비번변경 : mysql>alter user 'root'@'localhost' identified by '12345'; 
+       b. 권한부여 : mysql>flush privileges;
+
+   11) 한글처리를 위해 c:\mysql에 my.ini파일을 생성하여 기본 인코딩을 utf8로 변경
+
+		[client]
+		default-character-set=utf8
+
+		[mysql]
+		default-character-set=utf8
+
+		[mysqld]
+		collation-server=utf8_unicode_ci
+		init-connect='SET NAMES utf8'
+		character-set-server=utf8
+
+   12) mysql 재시작
+       
+       (cmd창)
+       a. mysql>exit;
+       b. c:\>net stop mysql
+       c. c:\>net start mysql
+
+   13) navicat연결 
+
+       a. MySQL Connection / root / 12345
+
+   14) mysql DataBase 생성
+
+       a. create database airline;
+       b. ontime 테이블 생성
+
+	create table ontime (
+		Year int,
+		Month int,
+		DayOfMonth int,
+		DayOfWeek int,
+		DepTime int,
+		CRSDepTime int,
+		ArrTime int,
+		CRSArrTime int,
+		UniqueCarrier varchar(5),
+		FlightNum int,
+		TailNum	varchar(8),
+		ActualElapsedTime int,
+		CRSElapsedTime int,
+		AirTime int,
+		ArrDelay int,
+		DepDelay int,
+		Origin varchar(3),
+		Dest varchar(3),
+		Distance int,
+		TaxiIn int,
+		TaxiOut int,
+		Cancelled int,
+		CancellationCode varchar(1),
+		Diverted varchar(1),
+		CarrierDelay int,
+		WeatherDelay int,
+		NASDelay int,
+		SecurityDelay int,
+		LateAircraftDelay int		
+	);
+
+	show tables;
+    desc ontime;
+    
+3. csv파일을 mysql 테이블로 업로드
+
+    1) data upload(navicat에서 실행)
+
+	 	LOAD DATA LOCAL INFILE 'd:/gilbaek/data/airline/2006.csv' INTO TABLE ontime 
+		  FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
+		  ...경고창에서 No클릭
+
+		LOAD DATA LOCAL INFILE 'd:/gilbaek/data/airline/2007.csv' INTO TABLE ontime 
+		  FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
+
+		LOAD DATA LOCAL INFILE 'd:/gilbaek/data/airline/2008.csv' INTO TABLE ontime 
+		  FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';  
+
+    2) Data Cleansing
+
+       a. 첫라인 3개행을 삭제(헤더라인)
+       b. select * from ontime where year = 0;
+          delete from ontime where year = 0;
+
+
+4. HDFS에 데이터업로드
+
+   1) /home/centos/data/airline 디렉토리에 csv파일을 HDFS의  input디렉토리로 upload
+
+      # hdfs dfs -mkdir input
+      # hdfs dfs -put /home/centos/data/airline /input
+        ... HDFS의 /input/airline이 생성되고 airline디렉토리에 file이 upload
+      # hdfs dfs -ls /input/airline
+
+
+5. 실습(출발 지연데이터 분석)
+
+  1) mysql Connector J 다운로드
+
+     a. https://dev.mysql.com/downloads/connector/j/    
+     b. java project 생성 및 Build Path 
+
+  2) java소스작성
+
+     a. airline.AirlinePerformanceParser.java
+
+package airline;
+
+import org.apache.hadoop.io.Text;
+
+public class AirlinePerformanceParser {
+	
+	private int year;
+	private int month;
+	private int arriveDelayTime = 0;
+	private int departureDelayTime = 0;
+	private int distance = 0;
+	private boolean arriveDelayAvailable = true;
+	private boolean departureDelayAvailable = true;
+	private boolean distanceAvailable = true;
+	private String uniqueCarrier;
+	
+	public AirlinePerformanceParser(Text text) {
+		
+		// 쉼표를 기준으로 문자열을 분리해서 배열로 저장
+		String[] columns = text.toString().split(",");
+		year = Integer.parseInt(columns[0]);   	// 년도
+		month = Integer.parseInt(columns[1]);  	// 월
+		uniqueCarrier = columns[8];  			// 항공사
+		
+		// 출발지연시간
+		if (!columns[15].equals("NA")) {		
+			departureDelayTime = Integer.parseInt(columns[15]); 
+		} else {
+			departureDelayAvailable = false;
+		} 
+		
+		// 도착지연시간
+		if (!columns[14].equals("NA")) {		
+			arriveDelayTime = Integer.parseInt(columns[14]); 
+		} else {
+			arriveDelayAvailable = false;
+		} 	
+		
+		// 운항거리
+		if (!columns[18].equals("NA")) {		
+			distance = Integer.parseInt(columns[18]); 
+		} else {
+			distanceAvailable = false;
+		} 		
+	}
+
+	// getter만 생성
+	public int getYear() {
+		return year;
+	}
+
+	public int getMonth() {
+		return month;
+	}
+
+	public int getArriveDelayTime() {
+		return arriveDelayTime;
+	}
+
+	public int getDepartureDelayTime() {
+		return departureDelayTime;
+	}
+
+	public int getDistance() {
+		return distance;
+	}
+
+	public boolean isArriveDelayAvailable() {
+		return arriveDelayAvailable;
+	}
+
+	public boolean isDepartureDelayAvailable() {
+		return departureDelayAvailable;
+	}
+
+	public boolean isDistanceAvailable() {
+		return distanceAvailable;
+	}
+
+	public String getUniqueCarrier() {
+		return uniqueCarrier;
+	}
+
+	
+}
+
+     b. airline.DepartureDelayCountMapper.java
+
+
+  package airline;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+public class DepartureDelayCountMapper 
+	extends Mapper<LongWritable, Text, Text, IntWritable>{
+
+	// map출력키
+	private Text outputkey = new Text();
+	
+	// map출력값
+	private final static IntWritable outputvalue = new IntWritable(1);
+
+	@Override
+	protected void map(LongWritable key, Text value, Context context)
+			throws IOException, InterruptedException {
+
+		AirlinePerformanceParser parser = new AirlinePerformanceParser(value);
+		
+		// 출력키 설정
+		outputkey.set(parser.getYear()+ "." + parser.getMonth());
+		
+		// 출력값 : 지연시간이 0보다 크면 출력데이터생성
+		if(parser.getDepartureDelayTime() > 0) {
+			context.write(outputkey, outputvalue);
+		}
+	}
+	
+}
+
+     c. airline.DelayCountReducer.java
+
+package airline;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class DelayCountReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
+
+	// 결과값 : 지연건수
+	private IntWritable result = new IntWritable();
+	
+	// 계산결과를 합치는 로직 
+	// key, list(value) : 2006.01 (1,1,1,1,......) -> 2006.01 10
+	@Override
+	protected void reduce(Text key, Iterable<IntWritable> values, Context context) 
+			throws IOException, InterruptedException {
+
+		int sum = 0;
+		for(IntWritable value : values) {
+			sum += value.get();
+		}
+		result.set(sum);
+		context.write(key, result);
+	}
+	
+}
+
+     d. airline.DepartureDelayCount.java
+
+package airline;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+
+import javafx.scene.text.Text;
+
+public class DepartureDelayCount {
+
+	public static void main(String[] args) throws Exception {
+		
+		Configuration conf = new Configuration();
+		
+		if(args.length !=2) {
+			System.err.println("사용법 : airline.DepartureDelayCount [input] [output]");
+			System.exit(2);
+		} 
+		
+		// 1. Job속성
+		Job job = Job.getInstance(conf, "DepartureDelayCount");
+		
+		// 2. 입력파일경로 (master서버의 입력경로)
+		FileInputFormat.addInputPath(job, new Path(args[0]));
+		
+		// 3. 출력파일경로(HDFS의 출력경로)
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		
+		// 4. Job속성 : java class(main, mapper, reducer)정의
+		job.setJarByClass(DepartureDelayCount.class);			// main class
+		job.setMapperClass(DepartureDelayCountMapper.class);	// mapper class
+		job.setReducerClass(DelayCountReducer.class); 			// reducer class
+		
+		// 5. Job속성 : 입출력데이터형 설정
+		job.setInputFormatClass(TextInputFormat.class);         // csv파일의 데이타
+		job.setOutputFormatClass(TextOutputFormat.class);		// mapper의 결과 데이터
+		job.setOutputKeyClass(Text.class);                      // reducer의 key : 2006.01
+		job.setOutputValueClass(IntWritable.class);             // reducer의 값  : 지연건수
+			
+		// 6. hdfs job을 실행
+		job.waitForCompletion(true);
+		
+	}
+}     
+
+  3) Hadoop.jar export
+
+  4) master실행
+
+     # hadoop jar /home/centos/source/Hadoop.jar airline.DepartureDelayCount /input/airline dep_delay_count
+
+
+
+
+  5) 결과확인 
+
+     a. mysql
+
+		select year, month, count(depdelay)
+		  from ontime
+		 where depdelay > 0
+		 group by year, month
+		 order by year, month;      
+
+		2006	1	197789
+		2006	2	198371
+		2006	3	235207
+		2006	4	212412
+		2006	5	218097
+		2006	6	263900
+		2006	7	281457
+		2006	8	254405
+		2006	9	209985
+		2006	10	248878
+		2006	11	230224
+		2006	12	274930
+		2007	1	255777
+		2007	2	259288
+		2007	3	276261
+		2007	4	249097
+		2007	5	241699
+		2007	6	307986
+		2007	7	307864
+		2007	8	298530
+		2007	9	195615
+		2007	10	231129
+		2007	11	217557
+		2007	12	304011
+		2008	1	247948
+		2008	2	252765
+		2008	3	271969
+		2008	4	220864
+
+     b. hadoop
+
+        # hdfs dfs -cat dep_delay_count/part-r-00000
+
+
+6. 실습(도착 지연데이터 분석)  
+
+   1) java소스작성
+
+     a. airline.AirlinePerformanceParser.java : 출발지연과 공통사용
+     b. airline.DelayCountReducer.java        : 공통사용
+     c. airline.ArrivalDelayCountMapper.java
+     d. airline.ArrivalDelayCount.java
+
+   2) hadoop project를 Hadoop.jar로 Export
+   3) master에서 실행
+
+      # hadoop jar /home/centos/source/Hadoop.jar airline.ArrivalDelayCount /input/airline arr_delay_count
+      # hdfs dfs -cat arr_delay_count/part-r-00000
+
+   4) 결과확인
+
+      a. mysql
+
+         select year, month, count(*)
+           from ontime
+          where arrdelay > 0
+          group by year, month 
+          order by year, month;
+
+      b. hadoop
+
+         # hdfs dfs -cat arr_delay_count/part-r-00000    
+
+7. RAM부족시 실행이 않될 경우 예외처리
+
+   1) master에서
+
+      a. /home/centos/data/airline/2008.csv에서 header를 제외하고 10건정도 복사
+      (terminal)
+      b. # cd /home/centos/data/airline
+      c. # gedit 9999.csv 
+         ... 10건정도 복사를 붙이기
+      d. # hdfs dfs -put /home/centos/data/airline/9999.csv /input/airline
+      e. # hdfs dfs -ls /input/airline
+      f. # hdfs dfs -rm -r dep_delay_count
+      g. # hadoop jar /home/centos/source/Hadoop.jar airline.DepartureDelayCount 
+              /input/airline/9999.csv dep_delay_count
+

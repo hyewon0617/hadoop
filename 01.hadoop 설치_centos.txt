@@ -1,0 +1,834 @@
+A. centos 다운 & windows10 다운
+   
+   1) centos : http://isoredirect.centos.org/centos/7/isos/x86_64/
+      a. http://mirror.navercorp.com/centos/7.7.1908/isos/x86_64/
+      b. CentOS-7-x86_64-DVD-1908.iso  
+
+   2) windows10 : https://www.microsoft.com/ko-kr/software-download/windows10  
+   
+      a. 지금 도구 다운로드 :  MediaCreationTool????.exe 
+      b. MediaCreationTool1909.exe 실행후 iso파일 생성
+      c. windows.iso
+
+B. 가상머신설치
+
+   1) VMWare 설치
+   2) Windows 10 설치
+      a. Install VMWare Tools 설치 : https://jootc.com/p/201910263181
+
+   3) Centos 7 설치
+
+      a. 키보드 : 영어(미국)추가 > 순설(영어/한국)
+      b. 소프트선택 : 개발 및 창조를 위한 워크스테이션
+      c. 네트워크 & 호스트이름 : 이더넷 on
+      d. 설치대상:
+         a) 파티션을 설정합니다 체크후에 (b)완료 클릭
+         b) 여기를 클릭하여 자동으로 생성합니다: 클릭
+         c) boot만 유지하고 나머지 파티션(swap, /) 삭제
+            (b)추가(+) 클릭
+               ... swap : 5gb
+               ... /(root): 공백 (나머지공간은 전부 root로 사용)
+         d) (b)변경사항적용
+         e) (b)설치시작
+      e. 사용자계정
+         a) root계정  : root / 12345
+         b) 사용자계정: centos / 12345
+
+      f. 설치완료후 재부팅
+         a) Licensing : 라이센스 동의 클릭
+         b) 약관에 동의 체크
+         c) 완료버튼 클릭
+         d) 설정완료 클릭
+      g. Install VMWare Tools
+      h. 한글설정
+         a) 시스템도구 > 설정 > 지역 및 언어
+         b) 입력소스 추가(+) > 한국어(Hangul)
+         c) 기존설정 "한국어" 제거(-)
+         d) 윈도우키 + space : 한영전환
+
+C. master 환경설정
+
+   1. jdk설치 : Terminal 실행(wimdows에서 cmd창) 
+
+      1) 자바버전확인   : # java -version
+      2) jdk prog list : # rpm -qa | grep jdk
+         ... rpm(Redhat Package Manager)
+             -> 패키지를 인스톨 하기 위한 프로그램
+             -> 사용법
+                a. 설치 : rpm -Uvh [패키지파일(*.rpm)]
+                b. 삭제 : rpm -e [패키지파일]
+                c. 이미 설치되어 있는 패키지에 대한 질의
+                   rpm -qa : 설치된 rpm쿼리(찾기)
+                   rpm -qi : package 정보쿼리
+                   rpm -qf : 연관된 rpm파일 정보 출력
+         ... grep : 전달된 파일에서 특정 문자열을 찾을 때 사용하는 명령
+      3) 자바삭제 : yum remove java*
+         ... yum(Yellowdog Updater Modified) : 인터넷 통해서 필요한 파일을
+             저장소(repository)에서 자동으로 다운로드해서 설치하는 명령
+             -> 사용법
+                a. 설치 : yum install [*.rpm 파일이름]
+                b. 업데이트가능한 목록보기 : yum check-update
+                c. 업데이트 : yum update [패키지이름] : 패키지이름을 입력하지 않으면 전부 업데이트한다.
+                d. 삭제 : yum remove [패키지이름]
+
+      4) 만약에 drap & drop이 않될 경우
+          VMWare-Tools 수동 설치 : # yum install open-vm-tools
+
+      5) jdk다운 및 설치
+
+         a. 다운로드 : www.oracle.com --> jdk1.8(jdk-8u241-linux-x64.tar.gz)
+         b. 다운로드폴더에서 압축풀기
+         c. 폴더이름변경 : jdk1.8.??? -> jdk1.8로 변경
+         d. 폴더이동 : /usr/local/jdk1.8
+         e. 확인 : # cd /usr/local
+                   # ls -la
+
+      6) 자바환경변수설정
+
+         a. 자동실행 스크립트파일 생성 : # gedit /etc/profile 
+
+            (맨 밑에 추가)
+
+            export JAVA_HOME=/usr/local/jdk1.8
+            export PATH=$PATH:$JAVA_HOME/bin
+            export JAVA_OPTS="-Dfile.encoding=UTF-8"
+            export CLASSPATH="."  
+
+            (linux에서 자동실행스크립트 파일의 실행순서)
+            /etc/profile
+            /etc/bashrc
+            ~/.bashrc
+            ~/.bash_profile
+         
+         b. 변경사항을 반영(설정파일이기 때문에) : # source /etc/profile
+         c. 재부팅 : # reboot
+         d. root 계정으로 로그인
+         e. 자바버전확인 : # java -version
+
+   2. Hadoop설치 : 
+
+      1) hadoop 다운 & 설치 : 2.9.?버전
+
+         a. https://hadoop.apache.org/release/2.9.0.html
+            -> hadoop-2.9.0.tar.gz(binary)
+         b. 압축풀기후 폴더이동 : /home/centos/hadoop-2.9.0
+         c. 이동확인 : # cd /home/centos
+                      # ls -la
+
+   3. Hadoop환경설정 
+
+      1) # gedit /etc/profile
+
+         export JAVA_HOME=/usr/local/jdk1.8
+         export JAVA_OPTS="-Dfile.encoding=UTF-8"
+         export CLASSPATH="."
+
+         export HADOOP_HOME=/home/centos/hadoop-2.9.0
+         export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+
+         export HDFS_NAMENODE_USER="root"
+         export HDFS_DATANODE_USER="root"
+         export HDFS_SECONDARYNAMENODE_USER="root"
+         export YARN_RESOURCEMANAGER_USER="root"
+         export YARN_NODEMANAGER_USER="root"
+
+      2) # source /etc/profile
+      3) # reboot
+      4) root계정으로 로그인
+      5) # hadoop version
+
+C. slave1,slave2,slave3, backup, test 클론
+
+   1. master 선택(우클릭) > manage > clone
+   2. 클론창
+      1) 다음 > clone type : "create a full clone" 
+
+D. linux 기본명령어
+
+   01. ls(List Segments) 
+       ... ls는 현재위치의 파일 목록을 조회하는 명령어
+       [주요옵션]
+       ... ls -l : 파일의 상세정보
+       ... ls -a : 숨어있는 파일도 표시
+       ... ls -t : 파일들의 생성된 시간별로(최신것 부터) 표시
+       ... ls -rt: 파일들을 오래된 시간부터 표시
+       ... ls -F : 파일표시할 때 마지막에 유형을 나타내는 파일명을 끝에 표시
+                   ('/'-디렉토리, '*'-실행파일, '@'-링크)
+       ... 각 옵션들은 자유롭게 합성해서 사용이 가능
+           ex) ls -la, ls -lrt
+
+   02. cd(Change Directory)
+
+       cd는 경로를 이동할 떄 사용하는 명령어
+       [주요옵션]
+       ... cd ~: 어느 곳에서든지 홈디렉토리로 바로 이동
+       ... cd ..: 상위디렉토리
+       ... cd /dir: 절대경로 dir로 이동
+       ... cd - : 이동하기 바로전으로 이동
+
+   03. touch
+
+       touch는 파일용량이 0인 파일을 생성, 날짜를 변경하는 명령
+       [주요옵션]
+       ... touch filename: filename의 파일을 생성
+       ... touch -c filename : file의 시간을 현재시간으로 변경
+       ... touch -t 202003051112 : file시간을 날짜정보 yyyymmddhhmm 으로 변경
+       ... touch -r filename1 filename2 : filename2의 날짜정보를 filename1의 날짜로 변경
+
+   04. mkdir(Make Directory)
+
+       mkdir은 새로운 디렉토리를 생성하는 명령어
+       [주요옵션]
+       ... mkdir dirname : dirname이라는 디렉토리를 생성
+       ... mkdir -p dirname/subdirname : 하위디렉토리까지 생성
+       ... mk -m 777 dirname : 특정권한을 갖는 디렉토리를 생성
+
+   05. cp(copy)
+
+       cp는 파일을 복사하는 명령
+       [주요옵션]
+       ... cp file1 file2: file1을 file2로 복사
+       ... cp -f file1 file2 : file2가 있으면 강제로 지우고 복사
+       ... cp -R dir1 dir2: 디렉토리를 복사할떄, 모든 하위경로와 파일을 모두 복사
+
+   06. mv(move)
+
+       mv는 파일이동명령, cp와 비슷하지만 다른 점은 cp는 원본파일은 보관 mv 원본파일이 
+       없다. 그래서 이름 변경시에도 사용된다.
+       [주요옵션]
+       ... mv file1 file2: file1을 file2로 이동. 즉, 이름변경
+       ... mv -b file1 file2 : file2가 존재하면 file2를 백업한뒤에 이동
+       ... mv -f file1 file2 : file2가 존재하면 덮어쓴다.
+
+   07. rm(remove)
+
+       rm은 파일, 디렉토리를 삭제하는 명령
+       [주요옵션]
+       ... rm file : file을 삭제, 확인메시지
+       ... rm -f file: file을 강제삭제 즉, 확인메시지가 없이 삭제
+       ... rm -r dir : dir를 삭제
+           -> 디렉토리 삭제할 경우 -r옵션이 없으면 삭제불가
+
+   08. cat(catenate)
+
+       cat명령은 파일의 내용을 출력
+       [주요옵션]
+       ... cat file:file내용을 출력
+       ... cat file1 file2 : file1에 이어서 file2의 내용을 출력
+       ... cat file1 file2|more :file1, file2을 출력하느데 페이지별로 출력
+       ... cat file1 file2|head : file1, file2를 처음부터 10번째까지 출력
+       ... cat file1 file2|taile: file1, file2를 끝에서 10번째까지 출력
+
+   09. redirection('>', '>>')
+
+       redirection은 리눅스 스트림의 방향을 조정하는 명령어
+       [주요옵션]
+       ... 명령 > file : 명령의 결과를 file로 저장
+           cat file1 file2 > file3 : file1, file2를 출력하고 결과를 file3에 저장
+       ... 명령 >> file : 명령의 결과를 file에 추가 
+           cat file1 >> file2 : file1의 내용을 file2에 추가 
+ 
+   10. alias   
+
+       alias는 자주하는 명령어를 간단한 명령어로 설정하는 명령, 해제할 경우 unalias를 사용
+       [주요옵션]
+       ... alias new = 'command' : command라는 명령을 new명령으로 별칭설정
+           alias ls = 'ls -la' : ls를 실행할경우 -la옵션을 갖는 명령으로 실행
+       ... alias : 현재 alias목록을 출력
+       ... unalias ls : ls라는 별칭명령어를 해제
+
+   11. chmod 
+
+       chmod(change mode)는 권한에 관한 명령으로 사용하는 방법은 2가지가 있다.
+       1. numeric method  : chmod 777 -> r = 2^4 = 4, w=2^1 = 2, x=2^0=1
+       2. symbolic method : chmod u=rwx, g=+r, u-x filename
+
+==========================================================================================
+Hadoop이란? 
+==========================================================================================  
+1. 대용량데이터를 분산처리를 할 수 있는 자바기반의 오픈소스 FrameWork
+2. 더그 커팅이 구글의 논문(2003년, The Google File System, 2004년 MapReduce:Simplified 
+   Data Processing on Larfe Cluster)을 참조해서 구현함
+3. 더그 커팅의 아들이 노란 코끼리 장난감인형을 Hadoop이라고 부른 것을 듣고 명명
+4. 공식사이트 : http://hadoop.apache.org 
+5. Hadoop관련용어
+   1) HDFS(Hadoop Distributed File System)
+      대용량의 파일을 분산된 서버에 설치하고 많은 클라이언트가 저장된 데이터를 
+      빠르게 처리할 수 있도록 설계된 파일 시스템
+
+   2) NameNode
+      HDFS의 모든 메터데이터를 관리하고 클라인트가 HDFS에 저장된 파일에 접근
+      할 수 있도록 처리하는 노드
+
+   3) DataNode
+      HDFS에 데이터를 입력하면 입력데이터는 128MB의 블럭으로 나눠져수 여러대의
+      DataNode에 분산되어 저장된다.
+
+   4) Secondary NameNode
+      주기적으로 네임노드의 파일시스템의 이미지 파일을 갱신하는 역할을 수행하는 노드
+
+   5) MapReduce
+      map과 reduce라는 두개의 Method로 구성된다. 대규모 분산 컴퓨팅 혹은 단일 컴퓨
+      팅환경에서 대량의 데이터를 병렬처리 및 분석을 할 수 있는 알고리즘
+
+   6) JobTracker
+      Hadoop Cluster에 등록된 전체 job의 스케쥴링을 관ㄹ하고 모니터링하는 노드
+
+   7) Mapper
+      맵리듀스 프로그래밍모델에서 map method의 역할을 수행하는 클래스. 키와 값으로 
+      구성된 입력 데이터를 전달받아서 이 데이터를 가공하고 분류해서 새로운 데이터를
+      생성한다.
+
+   8) Reducer
+      맵리듀스 프로그래밍 모델에서 reduce method의 역할을 수행하는 클래스. map task
+      의 출력데이터를 입력 데이터로 전달 받아서 집계연산을 수행한다.
+
+   9) YARN(Yet Another Resource Negotiator)
+      맴리튜스의 차세대기술, 맵리듀스의 확장성과 속도 문제를 해소하기 위해 개발된 
+      프로젝특
+
+  10) SSH(Secure Shell)
+      네트워크상의 다른 컴퓨터에 로그인하거나 원격시스템에서 명령을 실행하고 다른
+      시스템으로 파일을 복사할 수 있게 해주는 응용 프로토클이다. 기존의 telnet을
+      대체하기 위해 설계되었으며 암호화 기법을 사용하여 강력한 인증방법 및 안전하지
+      못한 네트워크에서 안전하게 통신할 수 있는 기능을 제공한다. 기본적으로 SSH는
+      22번 port를 사용한다.
+
+      하둡에서는 SSH프로토콜을 이용하여 Hadoop Cluster간의 내부통신을 수행한다. 
+      이 떄 SSH를 이용할 수 없다면 Hadoop을 실행할 수 없게 된다. 따라서 NameNode
+      에서 SSH공개키를 설정하고 이 공개키를 전체서버에 복사하는 작업을 진행한다.
+
+  11) NoSQL(Not Only SQL)
+      관계형 데이터 모델과 SQL문을 사용하지 않는 데이터베이스 시스템 혹은 데이터 
+      저장소를 말한다. 기존 RDBMS가 분산환경에 적합하지 않기 때문에 이를 극복하기
+      위해 고안된 시스템이다.
+
+      row단위가 아닌 집합형태로 저장되고 또한 Sharding이라는 기능이 있어서 데이터를
+      여러서버에 분산하여 저장한다. 기존 RDBMS처럼 완벽한 데이터 무결성을 제공하지는
+      않는다. 따라서 기없의 핵심데이터(급여데이터등)는 RDBMS를 이용하고 핵심은 아니지만
+      데이터를 보관하고 처리해야하는 경우 NoSQL을 이용하여 상호 보완적으로 사용한다.
+      NoSQL로서는 MongoDB, HBase등 다양한 솔루션이 있다.
+
+===================================================================================  
+A. Hadoop Single Mode
+   
+   Hadoop설정을 변경하지 않은 상태에서 Hadoop에 내장된 예제파일(*.jar)을 이용한 실습
+
+1. Hadoop설정파일을 input디렉토리에 복사
+
+   1) mkdir /home/centos/hadoop_test
+   2) cd /home/centos/hadoop_test
+   3) mkdir input
+   4) cp $HADOOP_HOME/etc/hadoop/*.xml input
+
+2. wordcount프로그램을 실행하여 파일(hadoop-env.sh)의 단어 갯수 분석
+
+   1) jar파일실행하기 : hadoop jar 실행파일(jar) 클래스이름 arg... 결과출력디렉토리
+   2) 실행 
+      ... hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.9.0.jar wordcount $HADOOP_HOME/etc/hadoop/hadoop-env.sh wordcount_output
+
+3. 실행결과 파일목록을 확인
+
+   1) ls -la wordcount_output/*
+   2) 실행결과확인
+      ... cat wordcount_output/part-r-00000 또는 cat wordcount_output/*
+      ... 위 5줄(head), 끝 5줄(tail)
+          head -5 wordcount_output/part-r-00000
+          tail -5 wordcount_output/part-r-00000
+    
+  (주의) 동일명령으로 재실행할 경우 에러가 발생 : 출력디렉토리가 중복으로 에러가 
+         발생하기 때문에 디렉토리를 변경하던가 workcount_output디렉토리를 삭제후
+         재실행
+         삭제명령은
+
+        # rm -rf workcount_output
+          -> r은 하위디렉토리까지 삭제, f는 강제적으로 삭제
+
+
+B. Single Node Cluster(가상(의사)분산모드)
+   ... 서버한대이지만 가상으로 분산처리를 하기 위한 모드
+   ... master에서만 실행
+
+   1. ssh설치
+      
+      1) ssh설치 : # yum -y install openssh-server
+         옵션 y: yes or no를 물어보지 않음
+         (실행되지 않을 경우)
+         메시지 출력내용에서 pid(프로세스아이디)확인하고 해당process를 죽이기
+         -> 새터미널을 오픈
+         -> # kill -9 pid(프로세스아이디)
+
+      2) 비밀번호를 생략한 ssh 로그인 설정
+         -> 공개키와 비밀키 생성 : # ssh-keygen -t rsa -P ""
+         -> 옵션 : t는 암호화 타입 : -t rsa
+                   P는 public key
+         -> 실행후 키를 저장하는 메시지 ((/root/.ssh/id_rsa 에 저장)
+            Enter file in which to save the key (/root/.ssh/id_rsa):
+                 
+      3) 공개키를 ssh인증키로 등록
+         
+         # cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+         # ls -la ~/.ssh/
+ 
+      4) 인증키의 권한(permission)설정(생략가능)
+ 
+         # chmod 600 ~/.ssh/authorized_keys
+
+      5) ssh접속확인 
+
+         # ssh localhost
+           -> Are you sure you want to continue connection(yes/no)? --> yes를 입력 
+
+   2. hadoop 관련 환경설정파일 수정
+
+      1) hadoop-env.sh 수정
+         ... 이 파일은 Hadoop실행환경을 설정하는 파일
+         ... # gedit $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+             --> 에러메시지 : (gedit:3131): Gtk-WARNING **: cannot open display
+                 -> ssh localhost로 접속해서 새로운 세션이 열려 있기 때문에
+                    발생하는 에러로서 기존 작업하고 있는 터미널을 exit명령을 
+                    실행해서 새로운 터미널을 오픈후 작업할 것
+
+         ... 25 line jdk경로를 수정, Hadoop은 자바기반에서 실행되기 때문에 경로를 설정
+
+             export JAVA_HOME=/usr/local/jdk1.8
+
+      2) core-site.xml 수정 (NameNode를 설정하는 파일)
+
+         # gedit $HADOOP_HOME/etc/hadoop/core-site.xml
+
+          <configuration>
+            <property>
+              <name>fs.defaultFS</name>
+                <value>hdfs://localhost:9000</value>
+            </property>
+          </configuration>         
+
+      3) hdfs-site.xml 수정 (파일복제옵션)
+
+         # gedit $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+
+          <configuration>
+            <property>
+              <name>dfs.replication</name>
+              <value>1</value>
+            </property>
+          </configuration>
+
+          ... value=1 : 서버가 1대를 의미. 즉, single node cluster모드를 의미
+
+      4) NameNode 포맷
+
+         ... pc를 포맷해야 사용할 수 있듯이 NameNode server도 format을 해야 한다.
+         ... # hdfs namenode -format
+
+      5) HDFS시스템시작
+    
+         ... 모든 설정이 완료되었기 때문에 Hadoop분산시스템을 시작
+         ... HDFS시작명령
+
+             # start-dfs.sh
+               --> 논리적으로 NameNode와 DataNode가 실행되기 때문에 접속을 허용해야 한다.
+               --> Are you sure you want to continue connection(yes/no)? --> yes를 입력
+
+      6) process 확인
+
+         # jps
+         (실행결과 아래와 같이 출력되면 성공)
+          ... 9999 NameNode
+          ... 9999 DataNode
+          ... 9999 SecondaryNameNode
+          ... 9999 Jps 
+
+      7) webbrowser로 확인 (HDFS를 확인)
+
+         ... firefox : http://localhost:50070
+             -> Live Nodes : 현재활성화된 DataNode를 의미, 1개만 설정했기 때문에 1개로 나옴
+             -> 클릭하면 상세정보가 표시
+             -> 또는 menu에서 DataNodes를 클릭
+
+      8) MapReduce를 실행
+
+         ... ResourceManager와 NodeManager를 시작 (즉, MapReduce를 실행하면 로드가 된다.)
+         ... MapReduce를 시작명령 
+             # start-yarn.sh
+             # jps
+            (실행결과 아래와 같이 출력되면 성공)
+            ... 9999 NameNode
+            ... 9999 DataNode
+            ... 9999 SecondaryNameNode
+            ... 9999 ResourceManager
+            ... 9999 NodeManager
+            ... 9999 Jps             
+
+      9) webbrowser로 확인 (MapReduce를 확인)
+         
+         ... FireFox : http://localhost:8088
+
+   3. 명령어정리
+
+      # start-all.sh
+      # stop-all.sh 
+      상기명령은 deprecated명령
+
+      # start-dfs.sh
+      # start-yarn.sh
+      # stop-yarn.sh
+      # stop-dfs.sh
+
+   4. 분석프로그램실행(WordCount)
+
+      ... hadoop-env.sh파일의 단어갯수 분석
+      ... MapReduce job을 실행하기 위해서는 HDFS디렉토리를 만들어야 한다.
+          Hadoop에서 논리적인 폴더를 생성해야 한다. 논리적폴더이기 때문에 시간이 좀 걸린다.
+      ... 실행명령
+          -> hdfs = Hadoop Distributed File System
+          -> dfs = Ditributed File Shell
+
+      1) 디렉토리생성
+          # hdfs dfs -mkdir /user
+          # hdfs dfs -mkdir /user/root
+          # hdfs dfs -mkdir /user/root/conf :생략
+          # hdfs dfs -mkdir /input
+          # hdfs dfs -ls / : 확인
+
+      2) 분석을 위해서 로컬파일을 하둡시스템 input디렉토리에 복사
+
+         # hdfs dfs -copyFromLocal /home/centos/hadoop-2.9.0/README.txt /input
+         # rm -rf wordcount_output
+
+      3) 분석프로그램실행 : hadoop jar jar파일 클래스이름 분석할 파일이름 결과디렉토리
+
+         # hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.9.0.jar wordcount /input/README.txt ~/wordcount_output
+
+         # hdfs dfs -ls ~/wordcount_output
+         ... loclahost:50070
+         ... loclahost:8088
+
+         <결과확인>
+         # hdfs dfs -cat ~/wordcount_output/part-r-00000
+
+C. Multi Node Cluster(완전분산모드)
+
+1. 네트워크설정
+
+   1) VMWare : (menu)Edit>Virtual Network Editor
+
+      a. VMNet8 - NAT로 설정
+      b. Subnet IP : 192.168.10.0 로 수정(관리자권한 : Changing set버튼을 클릭)
+      c. (button)NAT Setting클릭 ; G/W IP를 192.168.10.2를 192.168.10.254로 변경
+         --> master와 slave를 192.168.10.1 ~ 192.168.10.4로 사용하기 위해서 변경
+      d. 저장 : (button)OK>OK
+
+2. master, slave1~3까지 전부 구동
+
+   1) 모든 Node들의 IP를 변경
+
+      a. master : 192.168.10.1
+      b. slave1 : 192.168.10.2
+      c. slave2 : 192.168.10.3
+      d. slave3 : 192.168.10.4
+
+      subnet mask : 255.255.255.0
+      G/W         : 192.168.10.254
+      Name Server : 192.168.10.254
+                    168.126.63.1
+
+   2) 각노드에서
+
+      a. 유선네트워크설정
+      b. (button)톱니바퀴버튼(설정)
+      c. IPv4 메뉴에서 주소(A)옵션을 "자동(DHCP)"에서 "수동"으로 변경후 주소와 네임서버정보입력
+      d. (button)적용 클릭
+      e. 네트워크를 "켬"을 껏다가 다시 "켬" : 변경사항을 적용하려면 이과정을 수행
+      f. 호스트설정 (모든 Node에서 실행)
+
+        # gedit /etc/hosts
+
+          127.0.0.1     localhost
+          192.168.10.1  master
+          192.168.10.2  slave1
+          192.168.10.3  slave2
+          192.168.10.4  slave3
+
+      ** 상기작업은 master, slave1~3까지 반복수행
+      ** ip address확인(터미널) : ifconfig / ip address show
+
+   3) 모든 노드에서 hosts와 hostname을 일치시키는 작업
+
+      a. master : # gedit /etc/hostname --> master
+      b. slave1 : # gedit /etc/hostname --> slave1
+      c. slave2 : # gedit /etc/hostname --> slave2
+      d. slave3 : # gedit /etc/hostname --> slave3
+
+   4) 모든 노드에서 host관련 환경설정 변경사항을 적용하기
+
+      a. # /bin/hostname -F /etc/hostname
+      b. 터미널을 close후 다시 open 하면 hostname이 변경된 것을 확인
+      c. # reboot
+      d. # hostname : rebooting후에 hostname이 변경되었는지를 확인
+      e. 각 노드들 간에 통신을 확인
+         ... ping테스트 (종료할 경우 ctrl+c)
+             -> master 에서 # ping slave1 ~ ping slave3
+             -> slave1 에서 # ping master, slave2, 3
+             -> slave2 에서 # ping master, slave1, 3
+             -> slave3 에서 # ping master, slave1, 2
+
+3. SSH 공개키생성 및 복사
+
+   1) DataNode(slave1~3)만 : .ssh 디렉토리생성
+
+      a. # yum -y install openssh-server
+      b. # ssh-keygen -t rsa -P ""
+
+   2) 공개키를 복사
+
+      (로컬에서 원격서버로 파일 전송(복사))
+      # scp [옵션] [원본경로 및 file 계정명@[원격지IP주소]:[전송할 경로]]
+        ... -r : 하위디렉토리 및 파일 모두 복사함
+        ... -p : 원본파일 수정/사용시간 및 권한을 유지함
+      
+      a. master에서 생성한 공개키를 모든 DataNode로 복사 (master에서만 실행)
+
+         # scp -rp ~/.ssh/authorized_keys root@slave1:~/.ssh/authorized_keys
+         # scp -rp ~/.ssh/authorized_keys root@slave2:~/.ssh/authorized_keys
+         # scp -rp ~/.ssh/authorized_keys root@slave3:~/.ssh/authorized_keys
+
+         ... Are you sure you want to continue connecting (yes/no)? --> yes
+         ... root@slave1's password : 12345
+             --> 결과출력 : authorized_keys 100% 999 999.9KB/s 00:00
+         ... 각 DataNode에서 authorized_keys파일이 생성여부를 확인
+             # ls ~/.ssh -la
+
+4. 각 Node들간에 SSH접속설정 : 모든 노드에서 실행
+
+   # ssh master
+   # exit
+   # ssh slave1
+   # exit
+   # ssh slave2
+   # exit
+   # ssh salve3
+   # exit
+
+   (주의) master에 ssh 비번을 묻지만 DataNode(slave1~3)에서는 비밀번호를 물음
+
+5. Hadoop환경설정 (master에서 실행)
+   
+   1) hadoop-env.sh
+
+      # gedit $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+
+        a. 25 라인에 JDK경로를 수정 (모든 노드에서 실행)
+           --> export JAVA_HOME=/usr/local/jdk1.8
+
+        b. 104번라인에 Hadoop daemon의 pid저장경로 수정(master에서만 편집)
+           --> export HADOOP_PID_DIR=/home/centos/hadoop-2.9.0/pids
+
+   2) core-site.xml (모든 Node에서 실행)
+
+      # gedit $HADOOP_HOME/etc/hadoop/core-site.xml
+        --> localhost를 master수정
+
+   3) hdfs-site.xml 수정
+
+      a. master에서만 $HADOOP_HOME하위에 namenode와 datanode디렉토리를 생성
+
+         (namenode)
+         # rm -rf $HADOOP_HOME/namenode
+         # mkdir $HADOOP_HOME/namenode
+         # chown root -R $HADOOP_HOME/namenode : 소유자를 root계정으로 변경
+         # chmod 777 $HADOOP_HOME/namenode
+
+         (datanode)
+         # rm -rf $HADOOP_HOME/datanode
+         # mkdir $HADOOP_HOME/datanode
+         # chown root -R $HADOOP_HOME/datanode : 소유자를 root계정으로 변경
+         # chmod 777 $HADOOP_HOME/datanode
+
+         # ls $HADOOP_HOME -la 
+
+      b. slave1,2,3에 $HADOOP_HOME하위에 datanode디렉토리를 생성
+
+         (datanode)
+         # rm -rf $HADOOP_HOME/datanode
+         # mkdir $HADOOP_HOME/datanode
+         # chown root -R $HADOOP_HOME/datanode : 소유자를 root계정으로 변경
+         # chmod 777 $HADOOP_HOME/datanode
+
+         # ls $HADOOP_HOME -la 
+
+      c. master에서 hdfs-site.xml 수정
+
+         # gedit $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+
+            <configuration>
+                <property>
+                  <name>dfs.replication</name>
+                  <value>2</value> <!-- 2로 변경 -->
+                </property>
+                <property>
+                  <name>dfs.permissions</name>
+                  <value>false</value>
+                </property>
+                <property>
+                  <name>dfs.namenode.name.dir</name>
+                  <value>file:/home/centos/hadoop-2.9.0/namenode</value>
+                </property>
+                <property>
+                  <name>dfs.datanode.data.dir</name>
+                  <value>file:/home/centos/hadoop-2.9.0/datanode</value>
+                </property>
+            </configuration>
+
+      d. slave1,2,3에서 hdfs-site.xml 수정
+
+         # gedit $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+
+            <configuration>
+                <property>
+                  <name>dfs.replication</name>
+                  <value>2</value> <!-- 2로 변경 -->
+                </property>
+                <property>
+                  <name>dfs.permissions</name>
+                  <value>false</value>
+                </property>
+                <property>
+                  <name>dfs.datanode.data.dir</name>
+                  <value>file:/home/centos/hadoop-2.9.0/datanode</value>
+                </property>
+            </configuration>
+
+6. JobTracker설정 (모든 Node에서 설정)  
+
+   1) mapred-site.xml.template파일을 복사해서 mapred-site.xml만들기
+
+      # cp $HADOOP_HOME/etc/hadoop/mapred-site.xml.template 
+              $HADOOP_HOME/etc/hadoop/mapred-site.xml
+
+   2) mapred-site.xml 수정
+
+      # gedit $HADOOP_HOME/etc/hadoop/mapred-site.xml
+
+      <configuration>
+        <property>
+          <name>mapreduce.framework.name</name>
+          <value>yarn</value>
+        </property>
+      </configuration>
+
+   3) yarn-site.xml 수정
+
+      # gedit $HADOOP_HOME/etc/hadoop/yarn-site.xml
+
+      <configuration>
+        <property>
+          <name>yarn.nodemanager.aux-services</name>
+          <value>mapreduce_shuffle</value>
+        </property>
+        <property>
+          <name>yarn.nodemanager.auxservices.mapreduce.shuffle.class</name>
+          <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+        </property>
+      </configuration> 
+
+7. NameNode와 DataNode를 설정 (master에서만 설정)
+
+   ... 어떤 Node가 NameNode인지 DataNode인지를 정의하는 작업
+
+   # gedit $HADOOP_HOME/etc/hadoop/masters
+
+     master
+
+   # gedit $HADOOP_HOME/etc/hadoop/slaves
+
+     master
+     slave1
+     slave2
+     slave3
+
+   (주의) NameNode는 생략하는 것이 좋다. 그 이유는 NameNode를 동시에 DataNode로 사용하면
+         부하가 많이 걸리기 때문이다. NameNode는 메인역할 즉, 컨트럴역할을 하면서 Data까지
+         처리한다멘 NameNode서버에 부하가 많이 걸리기 때문이다.
+         하지만, 실습에서는 몇대 않되니까 NameNode도 DataNode역할을 할 수 있도록 정의한다.
+
+
+9. Hadoop (멀티분산) 가동(master에서만 실행)
+
+   1) NameNode Format
+
+      # $HADOOP_HOME/bin/hdfs namenode -format
+
+    ... path가 설정되어 있기 때문에 hdfs namenode -format
+
+11. FireWall Down(모든 Node에서 설정)
+
+    # systemctl stop firewalld.service
+    # systemctl disable firewalld.service
+
+    (주의) Hadoop에서는 방화벽 port를 많이 사용하기 때문에 전체를 내리는 것은 않좋다.
+          하지만 실습에서는 방화벽을 내리는 것으로 한다.
+
+12. DFS, YARN을 실행(master에서만 실행)
+
+    # start-dfs.sh(NameNode, SecondaryNameNode, DataNode가 실행됨) --> 분산파일시스템시작
+    # start-yarn.sh(master에는 ResourceManager와 NodeManager가 실행되고 
+                    slave에는 NodeManager만 실행 됨)
+
+13. 프로세스확인
+
+    1) master에서 확인 : # jps
+
+    9999 jps
+    9999 NameNode
+    9999 SecondaryNameNode
+    9999 DataNode
+    9999 ResourceManager
+    9999 NodeManager
+
+    2) slave1~3에서 확인 : # jps
+
+    9999 jps
+    9999 DataNode
+    9999 NodeManager
+
+14. DataNode가 올라오지 않을 경우에
+
+    1) slave1,2,3
+
+       # rm -rf $HADOOP_HOME/datanode
+       # mkdir $HADOOP_HOME/datanode 
+       # chown root $HADOOP_HOME/datanode
+       # chmod 777 $HADOOP_HOME/datanode
+
+    2) master
+
+       # stop-yarn.sh
+       # stop-dfs.sh
+
+       # rm -rf $HADOOP_HOME/namenode
+       # mkdir $HADOOP_HOME/namenode 
+       # chown root $HADOOP_HOME/namenode
+       # chmod 777 $HADOOP_HOME/namenode       
+
+       # rm -rf $HADOOP_HOME/datanode
+       # mkdir $HADOOP_HOME/datanode 
+       # chown root $HADOOP_HOME/datanode
+       # chmod 777 $HADOOP_HOME/datanode
+
+       # hdfs namenode -format
+
+       # start-dfs.sh
+       # start-yarn.sh
+
+15. Hadoop Web Interface확인(master에서 실행)
+ 
+    http://master:50070
+
+    1) master:9000가 Active인지 확인
+    2) Live Nodes 4개인지를 확인
+
+16. YARN Web Interface확인(master에서 실행)
+
+    http://master:8088
